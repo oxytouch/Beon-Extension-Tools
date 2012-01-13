@@ -36,6 +36,7 @@ def argparser():
   parser.add_argument('-o', '--ocr', action='store', choices=['hands', 'chip', 'ocr'], metavar='ocr', dest='ocr', help="Can be hands, chip or ocr. Default none and other not work 4n.")
   return parser
 
+<<<<<<< HEAD
 def message():
   src = textgen.train(pastefile)
   text = ""
@@ -43,6 +44,23 @@ def message():
     text = text + "\n" + textgen.generate_sentence(src)
   text = text.encode('utf-8')
   return random.choice()+'\n'+ text
+=======
+def message(gen='textgen',pastefile=settings.pastefile,min=3,max=10):
+  if gen == 'textgen':
+    src = textgen.train(pastefile)
+    text = ""
+    for i in range(random.randint(min, max)):
+      text = text + "\n" + textgen.generate_sentence(src)
+    text = text.encode('utf-8')
+  elif gen == 'wordsgen':
+    text = ""
+    for i in range(random.randint(3, 10)):
+      words = ""
+      for i in range(random.randint(3, 10)):
+	words = words + wordsgen.gen_word() + " "
+      text = text + "%s.\n" % (words)
+  return text
+>>>>>>> c942f2ecee1c7a06206f9537cd39a02cc4ff0210
 
 def posting(t, r, site, msg=None, user=None, stoponclose=settings.stoponclose, ocrtype=settings.ocr):
   target = ''.join(t[:2])
