@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import re, time, random, thread#, threading
+import re, time, random, thread, pycurl#, threading
 from argparse import ArgumentParser, ArgumentError
 #from threading import Thread, active_count()
 import settings
@@ -12,7 +12,7 @@ downed = []
 protected = []
 
 def argparser():
-  """Create an instance of OptionParser and fill it with appropriate options."""
+  """Create parser for option strings."""
   parser = ArgumentParser(prog='Omskbot', version='%prog 1.2.2', usage="main.py <mode> <site> <args> | <mode> <site> <args> |\n All defaults are belong to us^W^W^W vared for mode and/or site.")
   parser.add_argument('-r', '--regexp', action='store', dest='regexp', help="Regexp for parse. Can be regexp, target, link, pic or your regexp: r'(foo|bar)'")
   parser.add_argument('-t', '--threads', action='store', type=int, help="Posting threads count. Default may be 1.")
@@ -38,6 +38,7 @@ def argparser():
 
 #random.choice() 
 def message(gen='textgen',pastefile=settings.pastefile,min=3,max=10):
+  """Generate message from lists"""
   if gen == 'textgen':
     src = textgen.train(pastefile)
     text = ""
@@ -54,6 +55,7 @@ def message(gen='textgen',pastefile=settings.pastefile,min=3,max=10):
   return text
 
 def posting(t, r, site, msg=None, user=None, stoponclose=settings.stoponclose, ocrtype=settings.ocr):
+  """Post messages, process answers."""
   target = ''.join(t[:2])
   for i in xrange(r):
     try:
@@ -94,6 +96,7 @@ def posting(t, r, site, msg=None, user=None, stoponclose=settings.stoponclose, o
 	print rec.decode('cp1251')
 
 def onbump(site,regexp=None,wait=30,threads=1,posts=1,f=1,b=2):
+  """Onbump force."""
   print time.asctime(), "onbump force thread on %s started" % str(site)
   terminated = []
   while True:
@@ -124,6 +127,7 @@ def onbump(site,regexp=None,wait=30,threads=1,posts=1,f=1,b=2):
     time.sleep(wait)
 
 def force(site,regexp=None,wait=30,threads=3,posts=1,f=1,b=6):
+  """Standart force algo."""
   print time.asctime(), "force thread on %s started" % str(site)
   while True:
     print time.asctime(), "request and scan topics"
@@ -149,6 +153,7 @@ def force(site,regexp=None,wait=30,threads=3,posts=1,f=1,b=6):
     time.sleep(wait)
 
 def autobump(site,regexp=None,wait=30,f=5,b=11):
+  """Autobump function."""
   print time.asctime(), "autobump thread on %s started" % str(site)
   while True:
     print time.asctime(), "request and scan topics"
@@ -197,7 +202,8 @@ def userwipe(site,user,regexp=None,threads=1,posts=100500,wait=30,f=1,b=2):
 		thread.start_new_thread(posting, (t,posts,site,None,user))
 	      terminated.append(t)
     time.sleep(wait)
-
+def main():
+  """Main thread."""
 if __name__ == "__main__":
   print time.asctime(), "main thread started"
   '''def message():  
