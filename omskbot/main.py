@@ -3,12 +3,9 @@
 
 import re, time, random, thread, pycurl#, threading
 from argparse import ArgumentParser, ArgumentError
-#from threading import Thread, active_count()
-import settings
-import beon, ltalk, mindmix, textgen
+from threading import Thread, active_count
+import settings, textgen
 
-terminated = []
-downed = []
 protected = []
 
 def argparser():
@@ -16,42 +13,44 @@ def argparser():
   parser = ArgumentParser(prog='Omskbot', version='%prog 1.2.2', usage="main.py <mode> <site> <args> | <mode> <site> <args> |\n All defaults are belong to us^W^W^W vared for mode and/or site.")
   parser.add_argument('-r', '--regexp', action='store', dest='regexp', help="Regexp for parse. Can be regexp, target, link, pic or your regexp: r'(foo|bar)'")
   parser.add_argument('-t', '--threads', action='store', type=int, help="Posting threads count. Default may be 1.")
-  parser.add_argument('-l', '--threadlimit', action='store', type=int, help="Posting threads limit. Default None.")
+  parser.add_argument('-l', '--threadlimit', action='store', type=int, default=settings.threadlimit, help="Posting threads limit. Default None.")
   parser.add_argument('-p', '--posts', action='store', type=int, help="Posts count. May be 100500.")
-  parser.add_argument('-w', '--wait', action='store', type=int, help="Wait time. Default may be 30.")
-  parser.add_argument('-e', '--errtimeout', action='store', type=int, help="Error timeout. Default may be 5.")
-  parser.add_argument('-f', '--first', action='store', type=int, help="Fist page. Default may be 1 for scan/wipe and 5 for autobump.")
+  parser.add_argument('-w', '--wait', action='store', type=int, default=settings.wait, help="Wait time.")
+  parser.add_argument('-s', '--first', action='store', type=int, help="Fist(start/scan) page. Default may be 1 for scan/wipe and 5 for autobump.")
   parser.add_argument('-b', '--border', action='store', type=int, help="Border page - last page+1. Default may be 2 for scan/wipe and 10 for autobump.")
   parser.add_argument('-f', '--forum', action='store', help="Forum for gettopics. Default anonymous for beonlike sites.")
   parser.add_argument('-u', '--user', action='store', help="User for gettopics/posting. Default none for beonlike sites.")
   parser.add_argument('-m', '--message', action='store', nargs='+', help="Message for posting. Can be message (default function), textgen, wordsgen, your text in '' or list: 'foo bar' 'tar bar'.")
-  parser.add_argument('-F', '--textfile', action='store', nargs='+', help="File for textgen. Can be file or list: 'foo.txt' 'bar.txt'.")
   parser.add_argument('-i', '--image', action='store', nargs='+', help="Image for posting. Can be default or link/list in ''. Append tags automaticly.")
-  parser.add_argument('-I', '--imagelist', action='store', nargs='+', help="Image list for posting. Can be file or list in ''. Append tags automaticly.")
+  parser.add_argument('-F', '--textfile', action='store', nargs='+',  default=settings.textfile, help="File for textgen. Can be file or list: 'foo.txt' 'bar.txt'.")
+  parser.add_argument('-I', '--imagelist', action='store', nargs='+', default=settings.imagelist, help="Image list for posting. Can be file or list in ''. Append tags automaticly.")
   parser.add_argument('-T', '--topic', action='store', nargs='+', help="Topic for scan/posting. Can be number/list w/o -: 1234567 7684382")
-  parser.add_argument('-U', '--postuser', action='store', help="User for posting(author). Default none.")
-  parser.add_argument('-P', '--postpass', action='store', help="Pass for posting(author). Default none.")
-  parser.add_argument('-R', '--randselect', action='store_true', dest='randselect', default=True, help="Random element selection from list. Default True.")
-  parser.add_argument('-s', '--stoponclose', action='store_true', dest='stoponclose', default=True, help="Stop posting if topic closed. Default True, you may want to disable it.")
-  parser.add_argument('-o', '--ocr', action='store', choices=['hands', 'chip', 'ocr'], metavar='ocr', dest='ocr', help="Can be hands, chip or ocr. Default none and other not work 4n.")
+  parser.add_argument('-U', '--postuser', action='store', help="User for posting(author).")
+  parser.add_argument('-P', '--postpass', action='store', help="Pass for posting(author).")
+  parser.add_argument('-R', '--randselect', action='store_true', dest='randselect', default=settings.randselect, help="Random element selection from list. Default True.")
+  parser.add_argument('-S', '--stoponclose', action='store_true', dest='stoponclose', default=settings.stoponclose, help="Stop posting if topic closed. Default True, you may want to disable it.")
+  parser.add_argument('-O', '--ocr', action='store', choices=['hands', 'chip', 'ocr'], default=settings.ocr, help="Can be hands, chip or ocr. Default none and other not work 4n.")
   return parser
 
-#random.choice() 
-def message(gen='textgen',pastefile=settings.pastefile,min=3,max=10):
+def message(gen='textgen',textfile=None,img=None,imagefile=None,min=3,max=10):
   """Generate message from lists"""
   if gen == 'textgen':
-    src = textgen.train(pastefile)
+    src = textgen.train(textfile)
     text = ""
     for i in range(random.randint(min, max)):
       text = text + "\n" + textgen.generate_sentence(src)
     text = text.encode('utf-8')
   elif gen == 'wordsgen':
     text = ""
-    for i in range(random.randint(3, 10)):
+    for i in range(random.randint(min, max)):
       words = ""
-      for i in range(random.randint(3, 10)):
+      for i in range(random.randint(min, max)):
 	words = words + wordsgen.gen_word() + " "
       text = text + "%s.\n" % (words)
+  elif textfile != None: text = random.choice(open(textfile).read().split(settings.separator))
+  else: text = random.choice(gen)
+  if img != None: text = site.addimg(random.choice(img))+ text
+  elif imagefile != None: text = site.addimg(random.choice(open(imagefile).read().split(settings.separator)))+ text
   return text
 
 def posting(t, r, site, msg=None, user=None, stoponclose=settings.stoponclose, ocrtype=settings.ocr):
@@ -59,10 +58,9 @@ def posting(t, r, site, msg=None, user=None, stoponclose=settings.stoponclose, o
   target = ''.join(t[:2])
   for i in xrange(r):
     try:
-      if msg == None:  
-	rec = site.postmsg(target, message(), user)
-      else:
-	rec = site.postmsg(target, msg, user)
+      #rec = site.postmsg(target, message(opts.message, opts.image), user)
+      if msg == None: rec = site.postmsg(target, message(), user)
+      else: rec = site.postmsg(target, msg, user)
     except pycurl.error:
       print time.asctime(), "post error on %s post in %s, waiting" % (i, t)
       time.sleep(settings.errtimeout)
@@ -179,6 +177,7 @@ def autobump(site,regexp=None,wait=30,f=5,b=11):
     time.sleep(wait)
 
 def userwipe(site,user,regexp=None,threads=1,posts=100500,wait=30,f=1,b=2):
+  """Wipe all topics on user`s page"""
   print time.asctime(), "user wipe thread on %s started" % str(site)
   terminated = []
   while True:
@@ -202,10 +201,56 @@ def userwipe(site,user,regexp=None,threads=1,posts=100500,wait=30,f=1,b=2):
 		thread.start_new_thread(posting, (t,posts,site,None,user))
 	      terminated.append(t)
     time.sleep(wait)
-def main():
-  """Main thread."""
-if __name__ == "__main__":
+
+def sadwipe(site, opts, threads=1,f=1,b=2):
+  """Scan user/forum for target and wipe it."""
+  print time.asctime(), "threadwipe thread on %s started" % str(site)
+  terminated = []
+  downed = []
+  if opts.threads != None: threads=opts.threads
+  while True:
+    print time.asctime(), "request and scan topics"
+    try: page = site.gettopics(f,b)
+    except pycurl.error: print time.asctime(), "connection error, waiting"
+    else:
+      if opts.regexp == None: found = list(set(re.findall(site.targetregexp, page)))
+      else: found = list(set(re.findall(opts.regexp, page)))
+      if found == []: print time.asctime(), "no targets found"
+      else:
+	for t in found:
+	  if t in downed:
+	    print time.asctime(), "%s bumped by someone, terminating again" % (t,)
+	    downed.remove(t)
+	  if t in terminated: print time.asctime(), "lol, %s already terminated" % (t,)
+	  else:
+	    print time.asctime(), "found %s, terminating" % (t,)
+	    for i in range(threads): thread.start_new_thread(posting, (t, posts, site))
+	    terminated.append(t)
+      for t in terminated:
+	if t not in found:
+	  print time.asctime(), "removing downed %s from terminated" % (t,)
+	  downed.append(t)
+	  terminated.remove(t)
+    time.sleep(opts.wait)
+
+def main(args):
+  """Main thread. Parse args and run functions."""
   print time.asctime(), "main thread started"
+  margs=[]
+  for a in args[1:]:
+    if a != '|': margs.append(a)
+    else:
+      mode = getattr(__import__('main', fromlist=[margs[0]]), margs[0])
+      site = __import__(margs[1])
+      opts = argparser().parse_args(margs[2:])
+      #Thread.daemon = True
+      Thread(None,mode,margs[0],(site,opts)).start()
+      margs=[]
+  #Thread.join()
+  
+if __name__ == "__main__":
+  import sys
+  main(sys.argv)
   '''def message():  
     src = open('anal.txt').read()
     msg = random.choice(src.split('<post-separator>'))
