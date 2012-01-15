@@ -4,7 +4,7 @@
 import re, time, random, thread, pycurl#, threading
 from argparse import ArgumentParser, ArgumentError
 from threading import Thread, active_count
-import settings, textgen
+import settings, textgen, wordsgen, ocr
 
 protected = []
 
@@ -32,35 +32,33 @@ def argparser():
   parser.add_argument('-O', '--ocr', action='store', choices=['hands', 'chip', 'ocr'], default=settings.ocr, help="Can be hands, chip or ocr. Default none and other not work 4n.")
   return parser
 
-def message(gen='textgen',textfile=None,img=None,imagefile=None,min=3,max=10):
+def message(msg='textgen',img=None,textfile=settings.textfile,imagelist=settings.imagelist,min=3,max=10):
   """Generate message from lists"""
-  if gen == 'textgen':
+  if msg == 'textgen':
+    if textfile == None: print time.asctime(), "error, no textfile specified for textgen"
     src = textgen.train(textfile)
     text = ""
     for i in range(random.randint(min, max)):
       text = text + "\n" + textgen.generate_sentence(src)
     text = text.encode('utf-8')
-  elif gen == 'wordsgen':
+  elif msg == 'wordsgen':
     text = ""
     for i in range(random.randint(min, max)):
       words = ""
       for i in range(random.randint(min, max)):
 	words = words + wordsgen.gen_word() + " "
       text = text + "%s.\n" % (words)
-  elif textfile != None: text = random.choice(open(textfile).read().split(settings.separator))
-  else: text = random.choice(gen)
+  elif msg == None and textfile != None: text = random.choice(open(textfile).read().split(settings.separator))
+  else: text = random.choice(msg)
   if img != None: text = site.addimg(random.choice(img))+ text
-  elif imagefile != None: text = site.addimg(random.choice(open(imagefile).read().split(settings.separator)))+ text
+  elif imagelist != None: text = site.addimg(random.choice(open(imagefile).read().split(settings.separator)))+ text
   return text
 
-def posting(t, r, site, msg=None, user=None, stoponclose=settings.stoponclose, ocrtype=settings.ocr):
+def posting(t, r, site, msg=None,img=None,textfile=None,imagelist=None,user=None,postuser=None,postpass=None,stoponclose=settings.stoponclose,ocrtype=settings.ocr):
   """Post messages, process answers."""
   target = ''.join(t[:2])
   for i in xrange(r):
-    try:
-      #rec = site.postmsg(target, message(opts.message, opts.image), user)
-      if msg == None: rec = site.postmsg(target, message(), user)
-      else: rec = site.postmsg(target, msg, user)
+    try: rec = site.postmsg(target, message(msg,img,textfile,imagelist), user,postuser,postpass)
     except pycurl.error:
       print time.asctime(), "post error on %s post in %s, waiting" % (i, t)
       time.sleep(settings.errtimeout)
@@ -87,29 +85,65 @@ def posting(t, r, site, msg=None, user=None, stoponclose=settings.stoponclose, o
 	else:
 	  print time.asctime(), "post %s in %s can`t be posted, waiting" % (i, t)
 	  time.sleep(settings.errtimeout)
-      elif rec == site.succesrec or rec == site.othersuccesrec:
-	print time.asctime(), "post %s in %s posted" % (i, t)
+      elif rec == site.succesrec or rec == site.othersuccesrec: print time.asctime(), "post %s in %s posted" % (i, t)
       else:
 	print time.asctime(), "post %s in %s posted.. or not posted, lol" % (i, t)
 	print rec.decode('cp1251')
 
-def onbump(site,regexp=None,wait=30,threads=1,posts=1,f=1,b=2):
+def addtopic(site, t, r,  msg=None,subject='',img=None,textfile=None,imagelist=None,user=None,postuser=None,postpass=None,ocrtype=settings.ocr):
+  """Add topic to forum/user."""
+  for i in xrange(r):
+    try: rec = site.addtopicinc(message(msg,img,textfile,imagelist), t, subject, user,postuser,postpass)
+    except pycurl.error:
+      print time.asctime(), "post error on %s post in %s, waiting" % (i, t)
+      time.sleep(settings.errtimeout)
+    else:
+      if ocrtype != None:
+	import ocr
+	code = ocr.main(ocrtype, t,rec[0])
+	if code != None: 
+	  try: rec = site.addtopicfin(message(msg,img,textfile,imagelist), rec[1], code, t , subject, user,postuser,postpass)
+	  except pycurl.error: "post error on %s post in %s, waiting" % (i, t)
+	  else: 
+	    print time.asctime(), "post %s in %s posted" % (i, t)
+	    #print rec.decode('cp1251')
+	else: 
+	  print time.asctime(), "post %s in %s posted.. or not posted, lol" % (i, t)
+	  #print rec.decode('cp1251')
+	  #print time.asctime(), "rec redir on %s in %s: captcha or other shit, waiting" % (i, t)
+	  #time.sleep(settings.errtimeout)
+      '''elif rec == site.antispamrec:
+	print time.asctime(), "antispam detect on %s in %s, waiting" % (i, t)
+	time.sleep(settings.errtimeout)
+      elif rec == site.bumplimitrec or user != None and rec == site.userbumplimitrec:
+	print time.asctime(), "bumplimit reached in %s, stop posting" % (t,)
+	thread.exit()
+      elif rec == site.cantaddrec or user != None and rec == site.cantaddcomrec:
+	if stoponclose == True:
+	  print time.asctime(), "%s closed, stop posting" % (t,)
+	  thread.exit()
+	else:
+	  print time.asctime(), "post %s in %s can`t be posted, waiting" % (i, t)
+	  time.sleep(settings.errtimeout)
+      elif rec == site.succesrec or rec == site.othersuccesrec: print time.asctime(), "post %s in %s posted" % (i, t)
+      else:
+	print time.asctime(), "post %s in %s posted.. or not posted, lol" % (i, t)
+	print rec.decode('cp1251')'''
+
+def onbump(site, opts, threads=1,posts=1,f=1,b=2):
   """Onbump force."""
   print time.asctime(), "onbump force thread on %s started" % str(site)
   terminated = []
+  if opts.threads != None: threads=opts.threads
+  if opts.posts != None: posts=opts.posts
   while True:
     print time.asctime(), "request and scan topics"
-    try:
-      page = site.gettopics(f,b)
-    except pycurl.error:
-      print time.asctime(), "connection error, waiting"
+    try: page = site.gettopics(f,b)
+    except pycurl.error: print time.asctime(), "connection error, waiting"
     else:
-      if regexp == None:
-	found = list(set(re.findall(site.regexp, page)))
-      else:
-	found = list(set(re.findall(regexp, page)))
-      if found == []:
-	print time.asctime(), "no targets found"
+      if opts.regexp == None: found = list(set(re.findall(site.regexp, page)))
+      else: found = list(set(re.findall(opts.regexp, page)))
+      if found == []: print time.asctime(), "no targets found"
       else:
 	for t in found:
 	  if t not in protected:
@@ -122,11 +156,13 @@ def onbump(site,regexp=None,wait=30,threads=1,posts=1,f=1,b=2):
 	if t not in found:
 	  print time.asctime(), "removing downed %s from terminated" % (t,)
 	  terminated.remove(t)
-    time.sleep(wait)
+    time.sleep(opts.wait)
 
-def force(site,regexp=None,wait=30,threads=3,posts=1,f=1,b=6):
+def force(site,opts, threads=3,posts=1,f=1,b=6):
   """Standart force algo."""
   print time.asctime(), "force thread on %s started" % str(site)
+  if opts.threads != None: threads=opts.threads
+  if opts.posts != None: posts=opts.posts
   while True:
     print time.asctime(), "request and scan topics"
     try:
@@ -134,10 +170,8 @@ def force(site,regexp=None,wait=30,threads=3,posts=1,f=1,b=6):
     except pycurl.error:
       print time.asctime(), "connection error, waiting"
     else:
-      if regexp == None:
-	found = list(set(re.findall(site.regexp, page)))
-      else:
-	found = list(set(re.findall(regexp, page)))
+      if opts.regexp == None: found = list(set(re.findall(site.regexp, page)))
+      else: found = list(set(re.findall(opts.regexp, page)))
       if found == []:
 	print time.asctime(), "no targets found"
       else:
@@ -148,9 +182,9 @@ def force(site,regexp=None,wait=30,threads=3,posts=1,f=1,b=6):
 	  else:
 	    print time.asctime(), "selected %s, posting" % (t,)
 	    thread.start_new_thread(posting, (t, posts, site))
-    time.sleep(wait)
+    time.sleep(opts.wait)
 
-def autobump(site,regexp=None,wait=30,f=5,b=11):
+def autobump(site, opts, f=5,b=11):
   """Autobump function."""
   print time.asctime(), "autobump thread on %s started" % str(site)
   while True:
@@ -160,10 +194,8 @@ def autobump(site,regexp=None,wait=30,f=5,b=11):
     except pycurl.error:
       print time.asctime(), "connection error, waiting"
     else:
-      if regexp == None:
-	found = list(set(re.findall(site.regexp, page)))
-      else:
-	found = list(set(re.findall(regexp, page)))
+      if opts.regexp == None: found = list(set(re.findall(site.regexp, page)))
+      else: found = list(set(re.findall(opts.regexp, page)))
       if found == []:
 	print time.asctime(), "no targets found, all right with teh threads"
       else:
@@ -174,7 +206,7 @@ def autobump(site,regexp=None,wait=30,f=5,b=11):
 	  else:
 	    #print time.asctime(), "selected %s is not protected" % (t,)
 	    pass
-    time.sleep(wait)
+    time.sleep(opts.wait)
 
 def userwipe(site,user,regexp=None,threads=1,posts=100500,wait=30,f=1,b=2):
   """Wipe all topics on user`s page"""
@@ -202,12 +234,13 @@ def userwipe(site,user,regexp=None,threads=1,posts=100500,wait=30,f=1,b=2):
 	      terminated.append(t)
     time.sleep(wait)
 
-def sadwipe(site, opts, threads=1,f=1,b=2):
+def sadwipe(site, opts, threads=1,posts=200,f=1,b=2):
   """Scan user/forum for target and wipe it."""
   print time.asctime(), "threadwipe thread on %s started" % str(site)
   terminated = []
   downed = []
   if opts.threads != None: threads=opts.threads
+  if opts.posts != None: posts=opts.posts
   while True:
     print time.asctime(), "request and scan topics"
     try: page = site.gettopics(f,b)
@@ -240,13 +273,12 @@ def main(args):
   for a in args[1:]:
     if a != '|': margs.append(a)
     else:
-      mode = getattr(__import__('main', fromlist=[margs[0]]), margs[0])
+      mode = getattr(__import__('main', fromlist=[margs[0]]), margs[0]) # eval(margs[0])
       site = __import__(margs[1])
       opts = argparser().parse_args(margs[2:])
-      #Thread.daemon = True
       Thread(None,mode,margs[0],(site,opts)).start()
       margs=[]
-  #Thread.join()
+
   
 if __name__ == "__main__":
   import sys

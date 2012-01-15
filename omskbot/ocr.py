@@ -1,20 +1,20 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import subprocess
 import settings
 
 redirlist = []
 
-def main(ocrtype, target):
+def main(ocrtype, target=None, url=None):
   if ocrtype == 'chip':
     code = chip(target)
   elif ocrtype == 'hands':
-    code = pass
+    code = hands(url)
   elif ocrtype == 'ocr':
-    code = pass
-  retun code
+    pass
+  return code
 
 def chip(t, redirlim=settings.redirlim):
+  import subprocess
   redirlist.append(t)
   if redirlist.count(t) > redirlim:
     retc = subprocess.call(settings.chipcom)
@@ -24,11 +24,16 @@ def chip(t, redirlim=settings.redirlim):
       redirlist.remove(t)
   return None
 
-def hands(t, url):
+def hands(url):
+  import Image
   import StringIO
   # Or lock threads there? See main.posting.
-  captcha = Image.open(getcaptcha(url))
+  captcha = Image.open(StringIO.StringIO(getcaptcha(url)))
   captcha.show()
+  code = raw_input('code:')
+  return code
+  captcha.save('samples/'+code+'.'+captcha.format)
+  captcha.close()
 
 def ocr():
   pass
@@ -51,7 +56,7 @@ def getcaptcha(url):
   
   curl.perform()
   curl.close()
-  return string
+  return string.getvalue()
   string.close()
   
 
