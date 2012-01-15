@@ -149,7 +149,7 @@ def addtopicinc(text, forumid='16', subject='',user=None,postuser=postuser,postp
   string.close()
 '''
 import main, beon, random
-main.addtopic(beon, '16', 5, 'testtesttest'),ocrtype='hands')
+main.addtopic(beon, '16', 5, ['OCR test '+random.randint(0,100),ocrtype='hands')
 '''
 '''
 POST /p/add_topic.cgi HTTP/1.1
