@@ -93,23 +93,21 @@ def posting(t, r, site, msg=None, user=None, stoponclose=settings.stoponclose, o
 	print time.asctime(), "post %s in %s posted.. or not posted, lol" % (i, t)
 	print rec.decode('cp1251')
 
-def onbump(site,regexp=None,wait=30,threads=1,posts=1,f=1,b=2):
+
+def onbump(site, opts, threads=1,posts=1,f=1,b=2):
   """Onbump force."""
   print time.asctime(), "onbump force thread on %s started" % str(site)
   terminated = []
+  if opts.threads != None: threads=opts.threads
+  if opts.posts != None: posts=opts.posts
   while True:
     print time.asctime(), "request and scan topics"
-    try:
-      page = site.gettopics(f,b)
-    except pycurl.error:
-      print time.asctime(), "connection error, waiting"
+    try: page = site.gettopics(f,b)
+    except pycurl.error: print time.asctime(), "connection error, waiting"
     else:
-      if regexp == None:
-	found = list(set(re.findall(site.regexp, page)))
-      else:
-	found = list(set(re.findall(regexp, page)))
-      if found == []:
-	print time.asctime(), "no targets found"
+      if opts.regexp == None: found = list(set(re.findall(site.regexp, page)))
+      else: found = list(set(re.findall(opts.regexp, page)))
+      if found == []: print time.asctime(), "no targets found"
       else:
 	for t in found:
 	  if t not in protected:
@@ -122,11 +120,13 @@ def onbump(site,regexp=None,wait=30,threads=1,posts=1,f=1,b=2):
 	if t not in found:
 	  print time.asctime(), "removing downed %s from terminated" % (t,)
 	  terminated.remove(t)
-    time.sleep(wait)
+    time.sleep(opts.wait)
 
-def force(site,regexp=None,wait=30,threads=3,posts=1,f=1,b=6):
+def force(site,opts, threads=3,posts=1,f=1,b=6):
   """Standart force algo."""
   print time.asctime(), "force thread on %s started" % str(site)
+  if opts.threads != None: threads=opts.threads
+  if opts.posts != None: posts=opts.posts
   while True:
     print time.asctime(), "request and scan topics"
     try:
@@ -134,10 +134,8 @@ def force(site,regexp=None,wait=30,threads=3,posts=1,f=1,b=6):
     except pycurl.error:
       print time.asctime(), "connection error, waiting"
     else:
-      if regexp == None:
-	found = list(set(re.findall(site.regexp, page)))
-      else:
-	found = list(set(re.findall(regexp, page)))
+      if opts.regexp == None: found = list(set(re.findall(site.regexp, page)))
+      else: found = list(set(re.findall(opts.regexp, page)))
       if found == []:
 	print time.asctime(), "no targets found"
       else:
@@ -148,9 +146,9 @@ def force(site,regexp=None,wait=30,threads=3,posts=1,f=1,b=6):
 	  else:
 	    print time.asctime(), "selected %s, posting" % (t,)
 	    thread.start_new_thread(posting, (t, posts, site))
-    time.sleep(wait)
+    time.sleep(opts.wait)
 
-def autobump(site,regexp=None,wait=30,f=5,b=11):
+def autobump(site, opts, f=5,b=11):
   """Autobump function."""
   print time.asctime(), "autobump thread on %s started" % str(site)
   while True:
@@ -160,10 +158,8 @@ def autobump(site,regexp=None,wait=30,f=5,b=11):
     except pycurl.error:
       print time.asctime(), "connection error, waiting"
     else:
-      if regexp == None:
-	found = list(set(re.findall(site.regexp, page)))
-      else:
-	found = list(set(re.findall(regexp, page)))
+      if opts.regexp == None: found = list(set(re.findall(site.regexp, page)))
+      else: found = list(set(re.findall(opts.regexp, page)))
       if found == []:
 	print time.asctime(), "no targets found, all right with teh threads"
       else:
@@ -174,9 +170,9 @@ def autobump(site,regexp=None,wait=30,f=5,b=11):
 	  else:
 	    #print time.asctime(), "selected %s is not protected" % (t,)
 	    pass
-    time.sleep(wait)
+    time.sleep(opts.wait)
 
-def userwipe(site,user,regexp=None,threads=1,posts=100500,wait=30,f=1,b=2):
+def userwipe(site, opts,threads=1,posts=100500,f=1,b=2):
   """Wipe all topics on user`s page"""
   print time.asctime(), "user wipe thread on %s started" % str(site)
   terminated = []
@@ -200,14 +196,15 @@ def userwipe(site,user,regexp=None,threads=1,posts=100500,wait=30,f=1,b=2):
 	      for i in range(threads):
 		thread.start_new_thread(posting, (t,posts,site,None,user))
 	      terminated.append(t)
-    time.sleep(wait)
+    time.sleep(opts.wait)
 
-def sadwipe(site, opts, threads=1,f=1,b=2):
+def sadwipe(site, opts, threads=1,posts=200,f=1,b=2):
   """Scan user/forum for target and wipe it."""
   print time.asctime(), "threadwipe thread on %s started" % str(site)
   terminated = []
   downed = []
   if opts.threads != None: threads=opts.threads
+  if opts.posts != None: posts=opts.posts
   while True:
     print time.asctime(), "request and scan topics"
     try: page = site.gettopics(f,b)
@@ -243,10 +240,9 @@ def main(args):
       mode = getattr(__import__('main', fromlist=[margs[0]]), margs[0])
       site = __import__(margs[1])
       opts = argparser().parse_args(margs[2:])
-      #Thread.daemon = True
       Thread(None,mode,margs[0],(site,opts)).start()
       margs=[]
-  #Thread.join()
+
   
 if __name__ == "__main__":
   import sys
