@@ -31,8 +31,8 @@ def hands(url):
   captcha = Image.open(StringIO.StringIO(getcaptcha(url)))
   captcha.show()
   code = raw_input('code:')
-  return code
   captcha.save('samples/'+code+'.'+captcha.format)
+  return code
   captcha.close()
 
 def ocr():
