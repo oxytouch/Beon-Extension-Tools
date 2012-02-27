@@ -6,8 +6,9 @@ import settings
 
 postuser = None #User for posting(author). Default None.
 postpass = None #Pass for posting(author). Default none.
+cookie = 'beonlogincookie.jar'
 
-def postmsg (topicid, text, user=None, postuser=postuser,postpass=postpass):
+def postmsg (topicid, text, user=None, postuser=postuser,postpass=postpass, logined=False, cookie=cookie):
   """Posting message to topic"""
   postdata= {"ajax": "1",
    "topic_id": topicid,
@@ -30,6 +31,8 @@ def postmsg (topicid, text, user=None, postuser=postuser,postpass=postpass):
     postdata["alogin"] = postuser
     if postpass != None:
       postdata["password"] = postpass
+  if logined = True:
+    postdata["user_type"] = "logined"
   DATA_POST = "&".join(["%s=%s" % (k, v) for k, v in  postdata.items()])
   string = StringIO.StringIO()
   curl = pycurl.Curl()
@@ -41,6 +44,8 @@ def postmsg (topicid, text, user=None, postuser=postuser,postpass=postpass):
     curl.setopt(pycurl.PROXYTYPE, pycurl.PROXYTYPE_SOCKS5)
     curl.setopt(pycurl.HTTPPROXYTUNNEL,1)
     curl.setopt(pycurl.PROXY, settings.PROXY_ADDR)
+  if logined = True:
+    curl.setopt(pycurl.COOKIEFILE, cookie)
   if user == None:
     curl.setopt(pycurl.URL, 'http://beon.ru/p/add_comment.cgi')
   else:
@@ -53,7 +58,7 @@ def postmsg (topicid, text, user=None, postuser=postuser,postpass=postpass):
   return string.getvalue()
   string.close()
 
-def gettopics(f,b, forum='anonymous', user=None):
+def gettopics(f,b, forum='anonymous', user=None, logined=False, cookie=cookie):
   """Get topics from user/forum."""
   string = StringIO.StringIO() 
   curl = pycurl.Curl()
@@ -64,6 +69,8 @@ def gettopics(f,b, forum='anonymous', user=None):
     curl.setopt(pycurl.PROXYTYPE, pycurl.PROXYTYPE_SOCKS5)
     curl.setopt(pycurl.HTTPPROXYTUNNEL,1)
     curl.setopt(pycurl.PROXY, settings.PROXY_ADDR)
+  if logined = True:
+    curl.setopt(pycurl.COOKIEFILE, cookie)
   if user == None:
     for i in range(f,b):
       curl.setopt(pycurl.URL, 'http://beon.ru/'+forum+'/'+str(i)+'.html')
@@ -80,7 +87,7 @@ def addimg(link,size='original',orient='none'):
   """Add tags to img link."""
   return '[image-'+size+'-'+orient+'-'+link+']'
 
-def getposts(topic, forum='anonymous', user=None):
+def getposts(topic, forum='anonymous', user=None, logined=False, cookie=cookie):
   """Get posts from topic."""
   curl = pycurl.Curl()
   curl.setopt(pycurl.WRITEFUNCTION, string.write)
@@ -90,6 +97,8 @@ def getposts(topic, forum='anonymous', user=None):
     curl.setopt(pycurl.PROXYTYPE, pycurl.PROXYTYPE_SOCKS5)
     curl.setopt(pycurl.HTTPPROXYTUNNEL,1)
     curl.setopt(pycurl.PROXY, settings.PROXY_ADDR)
+  if logined = True:
+    curl.setopt(pycurl.COOKIEFILE, cookie)
   if user == None:
     curl.setopt(pycurl.URL, 'http://beon.ru/'+forum+'/'+topic)
   else:
@@ -102,7 +111,7 @@ def getposts(topic, forum='anonymous', user=None):
   return string.getvalue()
   string.close()
 
-def addtopicinc(text, forumid='16', subject='',user=None,postuser=postuser,postpass=postpass):
+def addtopicinc(text, forumid='16', subject='',user=None,postuser=postuser,postpass=postpass, logined=False, cookie=cookie):
   """Add topic to forum."""
   from random import randint
   import re
@@ -121,6 +130,8 @@ def addtopicinc(text, forumid='16', subject='',user=None,postuser=postuser,postp
     postdata["login"] = postuser
     if postpass != None:
       postdata["password"] = postpass
+  if logined = True:
+    postdata["user_type"] = "logined"
   DATA_POST = "&".join(["%s=%s" % (k, v) for k, v in  postdata.items()])
   string = StringIO.StringIO()
   curl = pycurl.Curl()
@@ -132,6 +143,8 @@ def addtopicinc(text, forumid='16', subject='',user=None,postuser=postuser,postp
     curl.setopt(pycurl.PROXYTYPE, pycurl.PROXYTYPE_SOCKS5)
     curl.setopt(pycurl.HTTPPROXYTUNNEL,1)
     curl.setopt(pycurl.PROXY, settings.PROXY_ADDR)
+  if logined = True:
+    curl.setopt(pycurl.COOKIEFILE, cookie)
   a = '0'#str(randint(0,5))
   if user == None:
     curl.setopt(pycurl.URL, 'http://a'+a+'.beon.ru/p/add_topic.cgi')
@@ -147,7 +160,6 @@ def addtopicinc(text, forumid='16', subject='',user=None,postuser=postuser,postp
   else: print 'error, no chash on rec page'
   string.close()
 '''
-addtopic(beon, '16', 200, ['OCR test','Puru puru rin','Pururu','Puru pururin','Puru puru pu'],'',['http://fc05.deviantart.net/fs42/i/2009/107/b/8/Pururin_16_by_Wszechobecniak.png','http://sibirchan.ru/a/src/121942539.jpg','http://fc09.deviantart.net/fs25/i/2008/216/3/7/Pururin_9_by_Wszechobecniak.png','http://fc07.deviantart.net/fs70/f/2010/002/7/1/Pururin_by_PurpleMarmoset.jpg','http://www.gaiashandfasting.com/images/awsome.jpg'],ocrtype='hands')
 '''
 '''
 POST /p/add_topic.cgi HTTP/1.1
@@ -166,7 +178,7 @@ Content-Type: application/x-www-form-urlencoded
 Content-Length: 247
 
 stage=final&catry=2&user_type=anonymous&add=%C4o%E1%E0%E2%E8%F2%FC+%F2%E5%EC%F3+Ctrl%2BEnter&forum_id=16&subject=&topic_id=&message=holy+test&login=&password=&topic_options=all&premoderate=nobody&chash=8b49dbf6df75e82ce4726cac8121a09d&cacode=c366c'''
-def addtopicfin(text, chash, cacode, forumid='16', subject='',user=None,postuser=postuser,postpass=postpass):
+def addtopicfin(text, chash, cacode, forumid='16', subject='',user=None,postuser=postuser,postpass=postpass,logined=False, cookie=cookie):
   """Add topic to forum."""
   postdata= {'stage': 'final',
    'catry': '1', # Captcha tryings count.
@@ -187,6 +199,8 @@ def addtopicfin(text, chash, cacode, forumid='16', subject='',user=None,postuser
     postdata["login"] = postuser
     if postpass != None:
       postdata["password"] = postpass
+  if logined = True:
+    postdata["user_type"] = "logined"
   DATA_POST = "&".join(["%s=%s" % (k, v) for k, v in  postdata.items()])
   string = StringIO.StringIO()
   curl = pycurl.Curl()
@@ -198,11 +212,79 @@ def addtopicfin(text, chash, cacode, forumid='16', subject='',user=None,postuser
     curl.setopt(pycurl.PROXYTYPE, pycurl.PROXYTYPE_SOCKS5)
     curl.setopt(pycurl.HTTPPROXYTUNNEL,1)
     curl.setopt(pycurl.PROXY, settings.PROXY_ADDR)
+  if logined = True:
+    curl.setopt(pycurl.COOKIEFILE, cookie)
   a = '0'#str(randint(0,5))
   if user == None:
     curl.setopt(pycurl.URL, 'http://a'+a+'.beon.ru/p/add_topic.cgi')
   else:
     curl.setopt(pycurl.URL, 'http://'+user+'.beon.ru/p/add_topic.cgi')
+  curl.setopt(pycurl.POSTFIELDS, DATA_POST)
+  curl.setopt(pycurl.POST,1)
+  
+  curl.perform()
+  curl.close()
+  return string.getvalue()
+  string.close()
+
+def logininc(login, pass, ref='/', cookie=cookie):
+  """Log in. Initial stage."""
+  from random import randint
+  import re
+  postdata= {'login': login,
+   'pass': pass,
+   'remember_me': 'on',
+   'r': ref}
+  DATA_POST = "&".join(["%s=%s" % (k, v) for k, v in  postdata.items()])
+  string = StringIO.StringIO()
+  curl = pycurl.Curl()
+  
+  curl.setopt(pycurl.WRITEFUNCTION, string.write)
+  if settings.USER_AGENT != None:
+    curl.setopt(pycurl.USERAGENT, settings.USER_AGENT)
+  if settings.PROXY_ADDR != None:
+    curl.setopt(pycurl.PROXYTYPE, pycurl.PROXYTYPE_SOCKS5)
+    curl.setopt(pycurl.HTTPPROXYTUNNEL,1)
+    curl.setopt(pycurl.PROXY, settings.PROXY_ADDR)
+  curl.setopt(pycurl.COOKIEFILE, cookie) 
+  curl.setopt(pycurl.COOKIEJAR, cookie) 
+  a = '0'#str(randint(0,5))
+  curl.setopt(pycurl.URL, 'http://a'+a+'.beon.ru/p/login.cgi')
+  curl.setopt(pycurl.POSTFIELDS, DATA_POST)
+  curl.setopt(pycurl.POST,1)
+  
+  curl.perform()
+  curl.close()
+  chash = re.findall(chashregexp, string.getvalue())
+  if chash !=[]: return ['http://a'+a+'.beon.ru/i/captcha/'+chash[0]+'.png',chash[0]]
+  else: print 'error, no chash on rec page'
+  string.close()
+
+def loginfin(login, pass, chash, cacode, ref='/',cookie=cookie):
+  """Log in. Final stage."""
+  postdata= {'stage': 'final',
+   'catry': '1', # Captcha tryings count.
+   'login': login,
+   'pass': pass,
+   'remember_me': 'on',
+   'chash': chash,
+   'cacode': cacode,
+   'r': ref}
+  DATA_POST = "&".join(["%s=%s" % (k, v) for k, v in  postdata.items()])
+  string = StringIO.StringIO()
+  curl = pycurl.Curl()
+  
+  curl.setopt(pycurl.WRITEFUNCTION, string.write)
+  if settings.USER_AGENT != None:
+    curl.setopt(pycurl.USERAGENT, settings.USER_AGENT)
+  if settings.PROXY_ADDR != None:
+    curl.setopt(pycurl.PROXYTYPE, pycurl.PROXYTYPE_SOCKS5)
+    curl.setopt(pycurl.HTTPPROXYTUNNEL,1)
+    curl.setopt(pycurl.PROXY, settings.PROXY_ADDR)
+  curl.setopt(pycurl.COOKIEFILE, cookie) 
+  curl.setopt(pycurl.COOKIEJAR, cookie) 
+  a = '0'#str(randint(0,5))
+  curl.setopt(pycurl.URL, 'http://a'+a+'.beon.ru/p/login.cgi')
   curl.setopt(pycurl.POSTFIELDS, DATA_POST)
   curl.setopt(pycurl.POST,1)
   
@@ -278,9 +360,11 @@ redirrec = 'REDIR'
 antispamrec = 'ERROR\xd1\xf0\xe0\xe1\xee\xf2\xe0\xeb\xe0 \xe7\xe0\xf9\xe8\xf2\xe0 \xee\xf2 \xf1\xef\xe0\xec\xe0. \xcf\xee\xe6\xe0\xeb\xf3\xe9\xf1\xf2\xe0, \xef\xee\xe4\xee\xe6\xe4\xe8\xf2\xe5 \xed\xe5\xea\xee\xf2\xee\xf0\xee\xe5 \xe2\xf0\xe5\xec\xff \xe8 \xef\xee\xef\xf0\xee\xe1\xf3\xe9\xf2\xe5 \xe4\xee\xe1\xe0\xe2\xe8\xf2\xfc \xea\xee\xec\xec\xe5\xed\xf2\xe0\xf0\xe8\xe9 \xf1\xed\xee\xe2\xe0.'
 bumplimitrec = 'HIDEERROR\xcf\xf0\xe5\xe2\xfb\xf8\xe5\xed\xee \xec\xe0\xea\xf1\xe8\xec\xe0\xeb\xfc\xed\xee\xe5 \xea\xee\xeb\xe8\xf7\xe5\xf1\xf2\xe2\xee \xea\xee\xec\xec\xe5\xed\xf2\xe0\xf0\xe8\xe5\xe2 \xe2 \xee\xe4\xed\xee\xec \xf2\xee\xef\xe8\xea\xe5. \xd1\xee\xe7\xe4\xe0\xe9\xf2\xe5, \xef\xee\xe6\xe0\xeb\xf3\xe9\xf1\xf2\xe0, \xe4\xf0\xf3\xe3\xee\xe9 \xf2\xee\xef\xe8\xea \xe8 \xef\xf0\xee\xe4\xee\xeb\xe6\xe8\xf2\xe5 \xee\xe1\xf1\xf3\xe6\xe4\xe5\xed\xe8\xe5 \xe2 \xed\xb8\xec.'
 userbumplimitrec = 'HIDEERROR\xcf\xf0\xe5\xe2\xfb\xf8\xe5\xed\xee \xec\xe0\xea\xf1\xe8\xec\xe0\xeb\xfc\xed\xee\xe5 \xea\xee\xeb\xe8\xf7\xe5\xf1\xf2\xe2\xee \xea\xee\xec\xec\xe5\xed\xf2\xe0\xf0\xe8\xe5\xe2 \xe4\xeb\xff \xee\xe4\xed\xee\xe9 \xe7\xe0\xef\xe8\xf1\xe8. \xcf\xf0\xee\xe4\xee\xeb\xe6\xe8\xf2\xe5, \xef\xee\xe6\xe0\xeb\xf3\xe9\xf1\xf2\xe0, \xee\xe1\xf1\xf3\xe6\xe4\xe5\xed\xe8\xe5 \xe2 \xe4\xf0\xf3\xe3\xee\xe9 \xe7\xe0\xef\xe8\xf1\xe8.'
-friendonlyrec = 'ERROR\xca\xee\xec\xec\xe5\xed\xf2\xe8\xf0\xee\xe2\xe0\xf2\xfc \xe7\xe0\xef\xe8\xf1\xfc \xec\xee\xe3\xf3\xf2 \xf2\xee\xeb\xfc\xea\xee \xe4\xf0\xf3\xe7\xfc\xff \xe5\xb8 \xe0\xe2\xf2\xee\xf0\xe0.' # Only fiends can post.
+onlyfriendrec = 'ERROR\xca\xee\xec\xec\xe5\xed\xf2\xe8\xf0\xee\xe2\xe0\xf2\xfc \xe7\xe0\xef\xe8\xf1\xfc \xec\xee\xe3\xf3\xf2 \xf2\xee\xeb\xfc\xea\xee \xe4\xf0\xf3\xe7\xfc\xff \xe5\xb8 \xe0\xe2\xf2\xee\xf0\xe0.' # Only fiends can post.
+onlysomerec = 'ERROR\xca\xee\xec\xec\xe5\xed\xf2\xe8\xf0\xee\xe2\xe0\xf2\xfc \xe7\xe0\xef\xe8\xf1\xfc \xec\xee\xe3\xf3\xe3 \xf2\xee\xeb\xfc\xea\xee \xef\xee\xeb\xfc\xe7\xee\xe2\xe0\xf2\xe5\xeb\xe8, \xe7\xe0\xe4\xe0\xed\xed\xfb\xe5 \xe0\xe2\xf2\xee\xf0\xee\xec \xe7\xe0\xef\xe8\xf1\xe8.' # Only some users can post.
+onlyviprec = 'ERROR\xca\xee\xec\xec\xe5\xed\xf2\xe8\xf0\xee\xe2\xe0\xf2\xfc \xe7\xe0\xef\xe8\xf1\xfc \xec\xee\xe3\xf3\xf2 \xf2\xee\xeb\xfc\xea\xee VIP-\xef\xee\xeb\xfc\xe7\xee\xe2\xe0\xf2\xe5\xeb\xe8.' # Only vip-users can post.
 succesrec = '1'
-othersuccesrec = 'HIDE1' #TODO: why not 1? can`t find 'HIDE' trigger.
-wrongauthrec = ''
+othersuccesrec = 'HIDE1' # From 1k comments.
+wrongauthrec = 'ERROR\xcd\xe5\xe2\xe5\xf0\xed\xfb\xe9 \xef\xe0\xf0\xee\xeb\xfc' # Wrong login/pass
 cantaddrec = '' # Yep, ''.
 cantaddcomrec = 'ERROR\xca\xee\xec\xec\xe5\xed\xf2\xe8\xf0\xee\xe2\xe0\xf2\xfc \xe7\xe0\xef\xe8\xf1\xfc \xec\xee\xe3\xf3\xf2 \xf2\xee\xeb\xfc\xea\xee \xf3\xf7\xe0\xf1\xf2\xed\xe8\xea\xe8 \xf1\xee\xee\xe1\xf9\xe5\xf1\xf2\xe2\xe0.'
